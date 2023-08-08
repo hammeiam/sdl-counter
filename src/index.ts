@@ -19,6 +19,7 @@ import {
   ADDRESSES,
   EXCLUSION_LIST,
   vestingToBeneficiaryContracts,
+  etherscanMevBots,
 } from "./constants";
 import { PublicChainClient, AddressBIMap } from "./types";
 import "dotenv/config";
@@ -274,6 +275,9 @@ export async function getUniV3PositionBalance(
   poolTokenIdMap: { [poolAddress: Address]: bigint[] },
   blockNumber?: bigint
 ) {
+  if (!ADDRESSES[publicClient.chain.id].uniV3Positions) {
+    throw new Error("No uniV3Positions contract address for chain");
+  }
   const uniV3PositionOwnerToBalance: AddressBIMap = {};
 
   const uniV3PositionsContract = getContract({
@@ -520,6 +524,7 @@ export async function main() {
       ...(EXCLUSION_LIST?.[chain.id] || []),
       ...(await getAllGaugeAddresses(publicClient)),
       ...(Object.keys(univ3LPs[chain.id]) || []), // exclude univ3 Pool contracts
+      ...etherscanMevBots,
     ]);
     const chainWallets = batchArray(
       Object.keys(targets).filter(

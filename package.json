@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.jt",
   "scripts": {
-    "exec": "tsc --build && node ./dist/index.js",
+    "exec": "tsc --build && node ./dist/src/index.js",
     "test": "vitest run",
     "coverage": "vitest --coverage"
   },

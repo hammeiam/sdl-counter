@@ -8,7 +8,7 @@ export const CHILD_GAUGE_FACTORY_NAME = stringToHex("ChildGaugeFactory", {
 });
 import { default as vestingToBeneficiaryContracts } from "./vestingContracts";
 
-export * as etherscanMevBots from "./mevbots";
+export { default as etherscanMevBots } from "./mevbots";
 export { default as vestingToBeneficiaryContracts } from "./vestingContracts";
 
 export const ADDRESSES: {
@@ -34,12 +34,14 @@ export const ADDRESSES: {
     masterRegistry: "0xaB94A2c0D8F044AA439A5654f06b5797928396cF",
     minichef: "0x2069043d7556B1207a505eb459D18d908DF29b55",
     childGaugeFactory: "0x19a5Ec09eE74f64573ac53f48A48616CE943C047",
+    uniV3Positions: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
   },
   [optimism.id]: {
     sdl: "0xAe31207aC34423C41576Ff59BFB4E036150f9cF7",
     masterRegistry: "0x0E510c9b20a5D136E75f7FD2a5F344BD98f9d875",
     minichef: "0x220d6bEedeA6a6317DaE19d39cd62EB7bb0ae5e4",
     childGaugeFactory: "0x19a5Ec09eE74f64573ac53f48A48616CE943C047",
+    uniV3Positions: "0xC36442b4a4522E871399CD717aBDD847Ab11FE88",
   },
   [evmos.id]: {
     sdl: "0x3344e55C6DDE2A01F4ED893f97bAC1f99EC24f8B",
