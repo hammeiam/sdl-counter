@@ -29,12 +29,12 @@ import {
   mergeBalanceMaps,
   formatBI18ForDisplay,
   createClient,
-  parseCsv,
+  readDuneTargetsCsv,
   batchArray,
-  writeCsv,
   formatValuesAsCsv,
-  parseUniv3LpCsv,
+  readUniv3LpCsv,
 } from "./utils";
+import { writeFileSync } from "fs";
 
 const allChains = [mainnet, arbitrum, optimism] as const;
 
@@ -499,8 +499,8 @@ export async function main() {
     "0xa76595083F0436912A50418901AcA7ED044Bb14F", // Mainnet Gnosis safe holding SDL
   ].map(getAddress);
 
-  const targets = parseCsv("./targets.csv");
-  const univ3LPs = parseUniv3LpCsv("./univ3_lps.csv");
+  const targets = readDuneTargetsCsv("./targets.csv");
+  const univ3LPs = readUniv3LpCsv("./univ3_lps.csv");
 
   const vesdlPromises = [];
   const sdlPromises = [];
@@ -630,7 +630,7 @@ export async function main() {
   ]);
 
   // Write some results to a CSV
-  writeCsv(
+  writeFileSync(
     "sdl-balances.csv",
     formatValuesAsCsv(
       Object.entries(sdlBalances)
@@ -640,7 +640,7 @@ export async function main() {
     )
   );
 
-  writeCsv(
+  writeFileSync(
     "vesdl-balances.csv",
     formatValuesAsCsv(
       Object.entries(vesdlBalances)
@@ -650,7 +650,7 @@ export async function main() {
     )
   );
 
-  writeCsv("non-eoa-addresses.csv", [...nonEOASet].sort().join("\n"));
+  writeFileSync("non-eoa-addresses.csv", [...nonEOASet].sort().join("\n"));
   return;
 }
 main();

@@ -9,20 +9,27 @@ import {
 } from "viem";
 import { REMAPPING, vestingToBeneficiaryContracts } from "./constants";
 import { AddressBIMap, PublicChainClient } from "./types";
+import { readFileSync } from "fs";
+
+export function parseCsv(csvPath: string) {
+  const csv = readFileSync(csvPath, "utf8");
+  const lines = csv.split("\n");
+  if (lines[lines.length - 1] === "") lines.pop();
+  return lines.map((line) => line.split(","));
+}
 
 /** Parses a CSV of the format `address,ethBool,arbBool,optBool` */
-export function parseCsv(csvPath: string) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fs = require("fs");
-  const csv = fs.readFileSync(csvPath, "utf8");
-  const lines = csv.split("\n");
-  const headers = lines[0].split(",");
-  const result = {} as { [address: Address]: { [chain: string]: boolean } };
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].split(",");
+export function readDuneTargetsCsv(csvPath: string) {
+  const csv = parseCsv(csvPath);
+  const result = {} as { [address: string]: { [chain: string]: boolean } };
+  for (let i = 1; i < csv.length; i++) {
+    const line = csv[i];
     const address = getAddress(line[0]);
-    const values = line.slice(1).map((x: string) => x === "1");
-    result[address] = zip(headers.slice(1), values) as {
+    const values = line.slice(1).map((x) => x === "1");
+
+    if (result[address]) throw Error(`Duplicate address: ${address}`);
+
+    result[address] = zip(["eth", "arb", "opt"], values) as {
       [chain: string]: boolean;
     };
   }
@@ -31,14 +38,13 @@ export function parseCsv(csvPath: string) {
 
 /** Parse a csv of the format 'chain,pool_address,tokenId'
  * to { [chain: string]: { [pool_address: string]: bigint[] } } */
-export function parseUniv3LpCsv(csvPath: string) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fs = require("fs");
-  const csv = fs.readFileSync(csvPath, "utf8");
-  const lines = csv.split("\n");
-  const result = {} as { [chain: string]: { [pool_address: string]: bigint[] } };
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].split(",");
+export function readUniv3LpCsv(csvPath: string) {
+  const csv = parseCsv(csvPath);
+  const result = {} as {
+    [chain: string]: { [pool_address: string]: bigint[] };
+  };
+  for (let i = 1; i < csv.length; i++) {
+    const line = csv[i];
     const chain = line[0];
     const pool_address = getAddress(line[1]);
     const tokenId = line[2];
@@ -47,12 +53,6 @@ export function parseUniv3LpCsv(csvPath: string) {
     result[chain][pool_address].push(BigInt(tokenId));
   }
   return result;
-}
-
-export function writeCsv(outputPath: string, data: string) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fs = require("fs");
-  fs.writeFileSync(outputPath, data);
 }
 
 export function enumerate(length: number, start = 0): number[] {
@@ -79,9 +79,7 @@ export function mergeBalanceMaps(...inputs: AddressBIMap[]) {
     for (const key of keys) {
       if (REMAPPING[key]) {
         result[REMAPPING[key]] = (result?.[REMAPPING[key]] || 0n) + obj[key];
-      }
-      else
-        result[key] = (result?.[key] || 0n) + obj[key];
+      } else result[key] = (result?.[key] || 0n) + obj[key];
     }
   }
   return result;
