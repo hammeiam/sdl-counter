@@ -33,12 +33,12 @@ import {
   batchArray,
   formatValuesAsCsv,
   readUniv3LpCsv,
+  readEtherscanNftCsv,
 } from "./utils";
 import { writeFileSync } from "fs";
 
 const allChains = [mainnet, arbitrum, optimism] as const;
 
-/** BALANCE FUNCTIONS */
 /**
  * Fetch the veSDL balance of a wallet, which is already weighted by lock-duration
  */
@@ -133,6 +133,29 @@ export async function getRetroVestingBalances(
     )
   );
   return zip(addresses, balances) as AddressBIMap;
+}
+
+/**
+ * Reads the badges-for-bandits-nfts.csv file and returns a map of address to number of badges
+ * File is derived from https://etherscan.io/exportData using address 0xe374b4df4cf95ecc0b7c93b49d465a1549f86cc0
+ */
+export async function getBadgesForBanditsNFTCount(
+  publicClient: PublicChainClient
+) {
+  if (publicClient.chain.id !== mainnet.id) return {} as AddressBIMap;
+
+  return readEtherscanNftCsv("./badges-for-bandits-nfts.csv");
+}
+
+/**
+ * Reads the saddle-creators-nfts.csv file and returns a map of address to number of badges
+ */
+export async function WIP_getSaddleCreatorsNFTCount(
+  publicClient: PublicChainClient
+) {
+  if (publicClient.chain.id !== mainnet.id) return {} as AddressBIMap;
+
+  return readEtherscanNftCsv("./saddle-creators-nfts.csv");
 }
 
 export async function _getAllGaugeAddressesMainnet(

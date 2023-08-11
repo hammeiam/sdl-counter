@@ -55,6 +55,23 @@ export function readUniv3LpCsv(csvPath: string) {
   return result;
 }
 
+/**
+ * Parse csv from etherscan csv export from https://etherscan.io/exportData
+ * headers are: "HolderAddress","Unique Tokens","Quantity","PendingBalanceUpdate"
+ */
+export function readEtherscanNftCsv(csvPath: string) {
+  const csv = parseCsv(csvPath);
+  const result = {} as { [address: string]: bigint };
+  for (let i = 1; i < csv.length; i++) {
+    const line = csv[i];
+    const address = getAddress(line[0]);
+    const holdings = BigInt(line[2]);
+    if (result[address]) throw Error(`Duplicate address: ${address}`);
+    result[address] = holdings;
+  }
+  return result;
+}
+
 export function enumerate(length: number, start = 0): number[] {
   return Array.from(Array(length).keys()).map((x) => x + start);
 }
