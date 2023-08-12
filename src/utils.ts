@@ -18,10 +18,11 @@ export function parseCsv(csvPath: string) {
   return lines.map((line) => line.split(","));
 }
 
-/** Parses a CSV of the format `address,ethBool,arbBool,optBool` */
+/** Parses a CSV of the format `address,1,10,42161,1_isEOA,10_isEOA,42161_isEOA` */
 export function readDuneTargetsCsv(csvPath: string) {
   const csv = parseCsv(csvPath);
   const result = {} as { [address: string]: { [chain: string]: boolean } };
+  const headers = csv[0];
   for (let i = 1; i < csv.length; i++) {
     const line = csv[i];
     const address = getAddress(line[0]);
@@ -29,7 +30,7 @@ export function readDuneTargetsCsv(csvPath: string) {
 
     if (result[address]) throw Error(`Duplicate address: ${address}`);
 
-    result[address] = zip(["eth", "arb", "opt"], values) as {
+    result[address] = zip(headers.slice(1), values) as {
       [chain: string]: boolean;
     };
   }
@@ -63,7 +64,7 @@ export function readEtherscanNftCsv(csvPath: string) {
   const csv = parseCsv(csvPath);
   const result = {} as { [address: string]: bigint };
   for (let i = 1; i < csv.length; i++) {
-    const line = csv[i];
+    const line = csv[i].map((x) => x.replace(/"/g, "")); // etherscan adds explicit quotes
     const address = getAddress(line[0]);
     const holdings = BigInt(line[2]);
     if (result[address]) throw Error(`Duplicate address: ${address}`);
@@ -81,7 +82,9 @@ export function zip<A extends string | number | symbol, B>(
   listB: B[]
 ): { string: B } {
   if (listA.length !== listB.length)
-    throw Error("Zip input lengths don't match");
+    throw Error(
+      `Zip input lengths don't match: ${listA.length} vs ${listB.length}`
+    );
 
   return listA.reduce(
     (acc, a, i) => ({ ...acc, [a]: listB[i] }),
@@ -174,7 +177,7 @@ export async function getBlockForTimestamp(
       (middleBlock.number as bigint) - (firstBlock.number as bigint) < 2n ||
       (lastBlock.number as bigint) - (middleBlock.number as bigint) < 2n
     ) {
-      return middleBlock.number;
+      return middleBlock.number as bigint;
     }
 
     if (middleBlock.timestamp > targetTimestamp) {
@@ -187,4 +190,5 @@ export async function getBlockForTimestamp(
         ((lastBlock.number as bigint) + (firstBlock.number as bigint)) / 2n,
     });
   }
+  return middleBlock.number as bigint;
 }
