@@ -704,15 +704,20 @@ export async function main() {
     ],
     ...[...nonEOASet]
       .map(
-        (address) =>
-          [
+        (address) => {
+          const isEOAMainnet = targets[address]?.[`${mainnet.id}_isEOA`];
+          const isEOAArbitrum = targets[address]?.[`${arbitrum.id}_isEOA`];
+          const isEOAOptimism = targets[address]?.[`${optimism.id}_isEOA`];
+          return [
             address,
             allSDLBalances[address] || 0n,
             allVeSDLBalances[address] || 0n,
-            targets[address]?.[`${mainnet.id}_isEOA`] ? "❌" : "✅",
-            targets[address]?.[`${arbitrum.id}_isEOA`] ? "❌" : "✅",
-            targets[address]?.[`${optimism.id}_isEOA`] ? "❌" : "✅",
-          ] as const
+            // If isEOAMainnet is undefined, then we don't know if it exists on mainnet. Use question mark to indicate this.
+            isEOAMainnet === undefined ? "?" : isEOAMainnet ? "✅" : "❌",
+            isEOAArbitrum === undefined ? "?" : isEOAArbitrum ? "✅" : "❌",
+            isEOAOptimism === undefined ? "?" : isEOAOptimism ? "✅" : "❌",
+          ] as const;
+        }
       )
       .filter(([, sdl, vesdl, ,]) => sdl > BigInt(1e20) || vesdl > BigInt(1e18))
       .sort((a, b) => (a[1] + 4n * a[2] > b[1] + 4n * b[2] ? -1 : 1))
