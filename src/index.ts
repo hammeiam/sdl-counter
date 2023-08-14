@@ -543,15 +543,6 @@ export async function main() {
   const allExclusionSet = new Set(
     allChains.flatMap((chain) => EXCLUSION_LIST?.[chain.id] || [])
   );
-  const nonEOASet = new Set(
-    Object.keys(targets).filter(
-      (address) =>
-        (!targets?.[address as Address]?.[`${mainnet.id}_isEOA`] ||
-          !targets?.[address as Address]?.[`${optimism.id}_isEOA`] ||
-          !targets?.[address as Address]?.[`${arbitrum.id}_isEOA`]) &&
-        !allExclusionSet.has(address as Address)
-    )
-  ) as Set<Address>;
 
   for (const chain of allChains) {
     const publicClient = createClient(chain);
@@ -577,24 +568,56 @@ export async function main() {
       1000
     );
     promises.push(
-      getVestingClaimableBalances(publicClient).then((result) => ({
-        vestingClaimable: result,
-      }))
+      getVestingClaimableBalances(publicClient)
+        .then((result) => {
+          return Object.fromEntries(
+            Object.entries(result).filter(
+              ([address]) => !chainExclusionSet.has(address as Address)
+            )
+          ) as AddressBIMap;
+        })
+        .then((result) => ({
+          vestingClaimable: result,
+        }))
     );
     promises.push(
-      getUniV3PositionBalance(publicClient, univ3LPs[chain.id]).then(
-        (result) => ({ uniV3: result })
-      )
+      getUniV3PositionBalance(publicClient, univ3LPs[chain.id])
+        .then((result) => {
+          return Object.fromEntries(
+            Object.entries(result).filter(
+              ([address]) => !chainExclusionSet.has(address as Address)
+            )
+          ) as AddressBIMap;
+        })
+        .then((result) => ({
+          uniV3: result,
+        }))
     );
     promises.push(
-      getSaddleCreatorsNFTCount(publicClient).then((result) => ({
-        saddleCreatorsNFT: result,
-      }))
+      getSaddleCreatorsNFTCount(publicClient)
+        .then((result) => {
+          return Object.fromEntries(
+            Object.entries(result).filter(
+              ([address]) => !chainExclusionSet.has(address as Address)
+            )
+          ) as AddressBIMap;
+        })
+        .then((result) => ({
+          saddleCreatorsNFT: result,
+        }))
     );
     promises.push(
-      getBadgesForBanditsNFTCount(publicClient).then((result) => ({
-        badgesForBanditsNFT: result,
-      }))
+      getBadgesForBanditsNFTCount(publicClient)
+        .then((result) => {
+          return Object.fromEntries(
+            Object.entries(result).filter(
+              ([address]) => !chainExclusionSet.has(address as Address)
+            )
+          ) as AddressBIMap;
+        })
+        .then((result) => ({
+          badgesForBanditsNFT: result,
+        }))
     );
 
     for (const batch of chainWallets) {
@@ -678,6 +701,16 @@ export async function main() {
       .slice(0, 25),
   ]);
 
+  const nonEOASet = new Set(
+    Object.keys(allSDLBalances).filter(
+      (address) =>
+        (!targets?.[address as Address]?.[`${mainnet.id}_isEOA`] ||
+          !targets?.[address as Address]?.[`${optimism.id}_isEOA`] ||
+          !targets?.[address as Address]?.[`${arbitrum.id}_isEOA`]) &&
+        !allExclusionSet.has(address as Address)
+    )
+  ) as Set<Address>;
+
   console.log("SDL Balances");
   console.table([
     ["total", formatBI18ForDisplay(totalSDL), "isContract?"],
@@ -709,12 +742,24 @@ export async function main() {
             address,
             allSDLBalances[address] || 0n,
             allVeSDLBalances[address] || 0n,
-            targets[address]?.[`${mainnet.id}_isEOA`] ? "❌" : "✅",
-            targets[address]?.[`${arbitrum.id}_isEOA`] ? "❌" : "✅",
-            targets[address]?.[`${optimism.id}_isEOA`] ? "❌" : "✅",
+            targets[address]?.[`${mainnet.id}_isEOA`] === undefined
+              ? "❓"
+              : targets[address]?.[`${mainnet.id}_isEOA`]
+              ? "❌"
+              : "✅",
+            targets[address]?.[`${arbitrum.id}_isEOA`] === undefined
+              ? "❓"
+              : targets[address]?.[`${arbitrum.id}_isEOA`]
+              ? "❌"
+              : "✅",
+            targets[address]?.[`${optimism.id}_isEOA`] === undefined
+              ? "❓"
+              : targets[address]?.[`${optimism.id}_isEOA`]
+              ? "❌"
+              : "✅",
           ] as const
       )
-      .filter(([, sdl, vesdl, ,]) => sdl > BigInt(1e20) || vesdl > BigInt(1e18))
+      .filter(([, sdl, vesdl, ,]) => sdl > BigInt(1e18) || vesdl > BigInt(1e18))
       .sort((a, b) => (a[1] + 4n * a[2] > b[1] + 4n * b[2] ? -1 : 1))
       .map(
         ([
@@ -767,6 +812,22 @@ export async function main() {
   );
 
   writeFileSync("non-eoa-addresses.csv", [...nonEOASet].sort().join("\n"));
+
+  const unknownEOASet = new Set(
+    Object.keys(allSDLBalances).filter(
+      (address) =>
+        (targets?.[address as Address]?.[`${mainnet.id}_isEOA`] === undefined ||
+          targets?.[address as Address]?.[`${optimism.id}_isEOA`] ===
+            undefined ||
+          targets?.[address as Address]?.[`${arbitrum.id}_isEOA`] ===
+            undefined) &&
+        !allExclusionSet.has(address as Address)
+    )
+  ) as Set<Address>;
+  writeFileSync(
+    "unknown-eoa-addresses.csv",
+    [...unknownEOASet].sort().join("\n")
+  );
   return;
 }
 main();
