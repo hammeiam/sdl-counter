@@ -9,19 +9,27 @@ import {
 } from "viem";
 import { REMAPPING, vestingToBeneficiaryContracts } from "./constants";
 import { AddressBIMap, PublicChainClient } from "./types";
+import { readFileSync } from "fs";
 
-/** Parses a CSV of the format `address,ethBool,arbBool,optBool` */
 export function parseCsv(csvPath: string) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fs = require("fs");
-  const csv = fs.readFileSync(csvPath, "utf8");
+  const csv = readFileSync(csvPath, "utf8");
   const lines = csv.split("\n");
-  const headers = lines[0].split(",");
-  const result = {} as { [address: Address]: { [chain: string]: boolean } };
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].split(",");
+  if (lines[lines.length - 1] === "") lines.pop();
+  return lines.map((line) => line.split(","));
+}
+
+/** Parses a CSV of the format `address,1,10,42161,1_isEOA,10_isEOA,42161_isEOA` */
+export function readDuneTargetsCsv(csvPath: string) {
+  const csv = parseCsv(csvPath);
+  const result = {} as { [address: string]: { [chain: string]: boolean } };
+  const headers = csv[0];
+  for (let i = 1; i < csv.length; i++) {
+    const line = csv[i];
     const address = getAddress(line[0]);
-    const values = line.slice(1).map((x: string) => x === "1");
+    const values = line.slice(1).map((x) => x === "1");
+
+    if (result[address]) throw Error(`Duplicate address: ${address}`);
+
     result[address] = zip(headers.slice(1), values) as {
       [chain: string]: boolean;
     };
@@ -31,14 +39,13 @@ export function parseCsv(csvPath: string) {
 
 /** Parse a csv of the format 'chain,pool_address,tokenId'
  * to { [chain: string]: { [pool_address: string]: bigint[] } } */
-export function parseUniv3LpCsv(csvPath: string) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fs = require("fs");
-  const csv = fs.readFileSync(csvPath, "utf8");
-  const lines = csv.split("\n");
-  const result = {} as { [chain: string]: { [pool_address: string]: bigint[] } };
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].split(",");
+export function readUniv3LpCsv(csvPath: string) {
+  const csv = parseCsv(csvPath);
+  const result = {} as {
+    [chain: string]: { [pool_address: string]: bigint[] };
+  };
+  for (let i = 1; i < csv.length; i++) {
+    const line = csv[i];
     const chain = line[0];
     const pool_address = getAddress(line[1]);
     const tokenId = line[2];
@@ -49,10 +56,21 @@ export function parseUniv3LpCsv(csvPath: string) {
   return result;
 }
 
-export function writeCsv(outputPath: string, data: string) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fs = require("fs");
-  fs.writeFileSync(outputPath, data);
+/**
+ * Parse csv from etherscan csv export from https://etherscan.io/exportData
+ * headers are: "HolderAddress","Unique Tokens","Quantity","PendingBalanceUpdate"
+ */
+export function readEtherscanNftCsv(csvPath: string) {
+  const csv = parseCsv(csvPath);
+  const result = {} as { [address: string]: bigint };
+  for (let i = 1; i < csv.length; i++) {
+    const line = csv[i].map((x) => x.replace(/"/g, "")); // etherscan adds explicit quotes
+    const address = getAddress(line[0]);
+    const holdings = BigInt(line[2]);
+    if (result[address]) throw Error(`Duplicate address: ${address}`);
+    result[address] = holdings;
+  }
+  return result;
 }
 
 export function enumerate(length: number, start = 0): number[] {
@@ -64,7 +82,9 @@ export function zip<A extends string | number | symbol, B>(
   listB: B[]
 ): { string: B } {
   if (listA.length !== listB.length)
-    throw Error("Zip input lengths don't match");
+    throw Error(
+      `Zip input lengths don't match: ${listA.length} vs ${listB.length}`
+    );
 
   return listA.reduce(
     (acc, a, i) => ({ ...acc, [a]: listB[i] }),
@@ -79,9 +99,7 @@ export function mergeBalanceMaps(...inputs: AddressBIMap[]) {
     for (const key of keys) {
       if (REMAPPING[key]) {
         result[REMAPPING[key]] = (result?.[REMAPPING[key]] || 0n) + obj[key];
-      }
-      else
-        result[key] = (result?.[key] || 0n) + obj[key];
+      } else result[key] = (result?.[key] || 0n) + obj[key];
     }
   }
   return result;
@@ -159,7 +177,7 @@ export async function getBlockForTimestamp(
       (middleBlock.number as bigint) - (firstBlock.number as bigint) < 2n ||
       (lastBlock.number as bigint) - (middleBlock.number as bigint) < 2n
     ) {
-      return middleBlock.number;
+      return middleBlock.number as bigint;
     }
 
     if (middleBlock.timestamp > targetTimestamp) {
@@ -172,4 +190,5 @@ export async function getBlockForTimestamp(
         ((lastBlock.number as bigint) + (firstBlock.number as bigint)) / 2n,
     });
   }
+  return middleBlock.number as bigint;
 }

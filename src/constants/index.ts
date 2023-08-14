@@ -10,6 +10,7 @@ import { default as vestingToBeneficiaryContracts } from "./vestingContracts";
 
 export { default as etherscanMevBots } from "./mevbots";
 export { default as vestingToBeneficiaryContracts } from "./vestingContracts";
+export { saddleCreators } from "./nftHolders";
 
 export const ADDRESSES: {
   [chainId: number]: {
@@ -65,7 +66,7 @@ export const EXCLUSION_LIST: { [chainId: number]: Address[] } = {
     "0x4ba5B41c4378966f08E3E4F7dd80840191D54C69", // Incite multisig address
     "0xc7b10D3B08CEB05d8ff58a3c781225D9a72078Ae", // veSDL Rewards
     "0xa4B86BcbB18639D8e708d6163a0c734aFcDB770c", // NoMad Recover
-    "0x46866d274e6d9015c5fdc098ce270803e11e3ef4", // SwapMigrator
+    "0x46866D274E6D9015c5FDc098CE270803e11e3eF4", // SwapMigrator
     ...Object.values(ADDRESSES[mainnet.id]),
     ...(Object.keys(vestingToBeneficiaryContracts) as Address[]),
   ],
@@ -80,7 +81,7 @@ export const EXCLUSION_LIST: { [chainId: number]: Address[] } = {
 
 export const REMAPPING: { [address: Address]: Address } = {
   "0x851aBEf4d67E8bb4eE2f90E5dE5e880f6235d028":
-    "0x9e2b6378ee8ad2a4a95fe481d63caba8fb0ebbf9", // Eth: Alchemix SDL controller -> Alchemix dev multisig
+    "0x9e2b6378ee8ad2A4A95Fe481d63CAba8FB0EBBF9", // Eth: Alchemix SDL controller -> Alchemix dev multisig
   "0x886f2d09909CaA489c745927E200AFd5aF198444":
     "0x5b12d9846F8612E439730d18E1C12634753B1bF1", // Arb: Sperax's custom contract for holding gauge tokens -> Sperax multisig
   "0xaa4D101eFD2F57dd9E3767F2b850417E7744367e":

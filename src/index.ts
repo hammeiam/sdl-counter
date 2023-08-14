@@ -20,6 +20,7 @@ import {
   EXCLUSION_LIST,
   vestingToBeneficiaryContracts,
   etherscanMevBots,
+  saddleCreators,
 } from "./constants";
 import { PublicChainClient, AddressBIMap } from "./types";
 import "dotenv/config";
@@ -29,16 +30,18 @@ import {
   mergeBalanceMaps,
   formatBI18ForDisplay,
   createClient,
-  parseCsv,
+  readDuneTargetsCsv,
   batchArray,
-  writeCsv,
   formatValuesAsCsv,
-  parseUniv3LpCsv,
+  readUniv3LpCsv,
+  readEtherscanNftCsv,
+  getBlockForTimestamp,
+  parseCsv,
 } from "./utils";
+import { writeFileSync } from "fs";
 
 const allChains = [mainnet, arbitrum, optimism] as const;
 
-/** BALANCE FUNCTIONS */
 /**
  * Fetch the veSDL balance of a wallet, which is already weighted by lock-duration
  */
@@ -133,6 +136,39 @@ export async function getRetroVestingBalances(
     )
   );
   return zip(addresses, balances) as AddressBIMap;
+}
+
+/**
+ * Reads the badges-for-bandits-nfts.csv file and returns a map of address to number of badges
+ * File is derived from https://etherscan.io/exportData using address 0xe374b4df4cf95ecc0b7c93b49d465a1549f86cc0
+ */
+export async function getBadgesForBanditsNFTCount(
+  publicClient: PublicChainClient
+) {
+  if (publicClient.chain.id !== mainnet.id) return {} as AddressBIMap;
+
+  const sdlPerNFT = 7_500n * BigInt(1e18);
+  const addrToNFTCount = readEtherscanNftCsv("./badges-for-bandits-nfts.csv");
+  return Object.fromEntries(
+    Object.entries(addrToNFTCount).map(([addr, nftCount]) => [
+      addr,
+      sdlPerNFT * nftCount,
+    ])
+  ) as AddressBIMap;
+}
+
+/**
+ * Assigns SDL to each saddle-creators-nft holder
+ */
+export async function getSaddleCreatorsNFTCount(
+  publicClient: PublicChainClient
+) {
+  if (publicClient.chain.id !== mainnet.id) return {} as AddressBIMap;
+
+  const sdlPerNFT = 350_000n * BigInt(1e18);
+  return Object.fromEntries(
+    saddleCreators.map((addr) => [getAddress(addr), sdlPerNFT])
+  ) as AddressBIMap;
 }
 
 export async function _getAllGaugeAddressesMainnet(
@@ -499,11 +535,11 @@ export async function main() {
     "0xa76595083F0436912A50418901AcA7ED044Bb14F", // Mainnet Gnosis safe holding SDL
   ].map(getAddress);
 
-  const targets = parseCsv("./targets.csv");
-  const univ3LPs = parseUniv3LpCsv("./univ3_lps.csv");
+  const targetTimestamp = 1690898195n;
+  const targets = readDuneTargetsCsv("./targets.csv");
+  const univ3LPs = readUniv3LpCsv("./univ3-lps.csv");
 
-  const vesdlPromises = [];
-  const sdlPromises = [];
+  const promises = [];
   const allExclusionSet = new Set(
     allChains.flatMap((chain) => EXCLUSION_LIST?.[chain.id] || [])
   );
@@ -519,10 +555,16 @@ export async function main() {
 
   for (const chain of allChains) {
     const publicClient = createClient(chain);
+    const [targetBlock, gaugeAddresses] = await Promise.all([
+      getBlockForTimestamp(publicClient, targetTimestamp),
+      getAllGaugeAddresses(publicClient),
+    ]);
+
+    console.log(`Target block for ${chain.name}: ${targetBlock}`);
 
     const chainExclusionSet = new Set([
       ...(EXCLUSION_LIST?.[chain.id] || []),
-      ...(await getAllGaugeAddresses(publicClient)),
+      ...(gaugeAddresses || []),
       ...(Object.keys(univ3LPs[chain.id]) || []), // exclude univ3 Pool contracts
       ...etherscanMevBots,
     ]);
@@ -534,32 +576,102 @@ export async function main() {
       ) as Address[],
       1000
     );
-
-    sdlPromises.push(getVestingClaimableBalances(publicClient));
-    sdlPromises.push(getUniV3PositionBalance(publicClient, univ3LPs[chain.id]));
+    promises.push(
+      getVestingClaimableBalances(publicClient).then((result) => ({
+        vestingClaimable: result,
+      }))
+    );
+    promises.push(
+      getUniV3PositionBalance(publicClient, univ3LPs[chain.id]).then(
+        (result) => ({ uniV3: result })
+      )
+    );
+    promises.push(
+      getSaddleCreatorsNFTCount(publicClient).then((result) => ({
+        saddleCreatorsNFT: result,
+      }))
+    );
+    promises.push(
+      getBadgesForBanditsNFTCount(publicClient).then((result) => ({
+        badgesForBanditsNFT: result,
+      }))
+    );
 
     for (const batch of chainWallets) {
-      vesdlPromises.push(getVesdlBalances(publicClient, batch));
-      sdlPromises.push(getLockedSdlBalances(publicClient, batch));
-      sdlPromises.push(getGaugesUnclaimedBalances(publicClient, batch));
-      sdlPromises.push(getWalletSdlBalances(publicClient, batch));
-      sdlPromises.push(getSushiSDLBalances(publicClient, batch));
-      await Promise.all(sdlPromises);
+      promises.push(
+        getVesdlBalances(publicClient, batch, targetBlock).then((result) => ({
+          veSDL: result,
+        }))
+      );
+      promises.push(
+        getLockedSdlBalances(publicClient, batch, targetBlock).then(
+          (result) => ({ lockedSDL: result })
+        )
+      );
+      promises.push(
+        getGaugesUnclaimedBalances(publicClient, batch, targetBlock).then(
+          (result) => ({ gaugesUnclaimed: result })
+        )
+      );
+      promises.push(
+        getWalletSdlBalances(publicClient, batch, targetBlock).then(
+          (result) => ({ walletSDL: result })
+        )
+      );
+      promises.push(
+        getSushiSDLBalances(publicClient, batch, targetBlock).then(
+          (result) => ({ sushiSDL: result })
+        )
+      );
+
+      await Promise.all(promises);
     }
   }
-
-  const vesdlBalances = mergeBalanceMaps(...(await Promise.all(vesdlPromises)));
-  const sdlBalances = mergeBalanceMaps(...(await Promise.all(sdlPromises)));
+  const sumObjectValues = (obj: { [key: string]: bigint }) => {
+    return Object.values(obj).reduce((sum, bal) => sum + bal, 0n);
+  };
+  const mergeBalancesMapsHavingKey = (
+    balancesByKey: { [key: string]: AddressBIMap }[],
+    targetKey: string
+  ) => {
+    return mergeBalanceMaps(
+      ...balancesByKey.map((result) => result[targetKey] || {})
+    );
+  };
+  const promisesResults = await Promise.all(promises);
+  const resultKeys = [
+    "veSDL",
+    "lockedSDL",
+    "gaugesUnclaimed",
+    "walletSDL",
+    "sushiSDL",
+    "vestingClaimable",
+    "uniV3",
+    "saddleCreatorsNFT",
+    "badgesForBanditsNFT",
+  ] as const;
+  const resultsByKey = resultKeys.reduce(
+    (acc, key) => ({
+      ...acc,
+      [key]: mergeBalancesMapsHavingKey(promisesResults, key),
+    }),
+    {}
+  ) as Record<(typeof resultKeys)[number], AddressBIMap>;
+  const sumsByKey = resultKeys.reduce(
+    (acc, key) => ({ ...acc, [key]: sumObjectValues(resultsByKey[key]) }),
+    {}
+  ) as Record<(typeof resultKeys)[number], bigint>;
+  const totalVeSDL = sumsByKey["veSDL"];
+  const totalSDL = sumObjectValues(sumsByKey) - totalVeSDL;
+  const allSDLBalances = mergeBalanceMaps(
+    ...resultKeys.filter((k) => k !== "veSDL").map((k) => resultsByKey[k])
+  );
+  const allVeSDLBalances = resultsByKey["veSDL"];
 
   console.log("veSDL Balances");
   console.table([
-    [
-      "total",
-      formatBI18ForDisplay(
-        Object.values(vesdlBalances).reduce((sum, bal) => sum + bal, 0n)
-      ),
-    ],
-    ...Object.entries(vesdlBalances)
+    ["total", formatBI18ForDisplay(totalVeSDL)],
+    ...Object.entries(allVeSDLBalances)
       .filter(([, bal]) => bal > BigInt(1e18)) // > 1 veSDL
       .sort((a, b) => (a[1] > b[1] ? -1 : 1))
       .map(([k, v]) => [k, formatBI18ForDisplay(v)])
@@ -568,14 +680,8 @@ export async function main() {
 
   console.log("SDL Balances");
   console.table([
-    [
-      "total",
-      formatBI18ForDisplay(
-        Object.values(sdlBalances).reduce((sum, bal) => sum + bal, 0n)
-      ),
-      "isContract?",
-    ],
-    ...Object.entries(sdlBalances)
+    ["total", formatBI18ForDisplay(totalSDL), "isContract?"],
+    ...Object.entries(allSDLBalances)
       .filter(([, bal]) => bal > BigInt(1e20)) // > 100 SDL
       .sort((a, b) => (a[1] > b[1] ? -1 : 1))
       .map(([k, v]) => [
@@ -597,19 +703,19 @@ export async function main() {
       "existsOnOptimism",
     ],
     ...[...nonEOASet]
-      .map((address) => [
-        address,
-        sdlBalances[address] || 0n,
-        vesdlBalances[address] || 0n,
-        targets[address]?.[`${mainnet.id}_isEOA`] ? "❌" : "✅",
-        targets[address]?.[`${arbitrum.id}_isEOA`] ? "❌" : "✅",
-        targets[address]?.[`${optimism.id}_isEOA`] ? "❌" : "✅",
-      ])
-      .filter(
-        ([, sdl, vesdl, ,]) =>
-          (sdl as bigint) > BigInt(1e20) || (vesdl as bigint) > BigInt(1e18)
+      .map(
+        (address) =>
+          [
+            address,
+            allSDLBalances[address] || 0n,
+            allVeSDLBalances[address] || 0n,
+            targets[address]?.[`${mainnet.id}_isEOA`] ? "❌" : "✅",
+            targets[address]?.[`${arbitrum.id}_isEOA`] ? "❌" : "✅",
+            targets[address]?.[`${optimism.id}_isEOA`] ? "❌" : "✅",
+          ] as const
       )
-      .sort((a, b) => ((a[1] as bigint) > (b[1] as bigint) ? -1 : 1))
+      .filter(([, sdl, vesdl, ,]) => sdl > BigInt(1e20) || vesdl > BigInt(1e18))
+      .sort((a, b) => (a[1] + 4n * a[2] > b[1] + 4n * b[2] ? -1 : 1))
       .map(
         ([
           address,
@@ -626,31 +732,41 @@ export async function main() {
           existsOnArbitrum,
           existsOnOptimism,
         ]
-      ),
+      )
+      .slice(0, 45),
+  ]);
+
+  console.table([
+    ["TYPE", "TOTAL"],
+    ["", ""],
+    ["SDL Sum", formatBI18ForDisplay(totalSDL)],
+    ["veSDL Sum", formatBI18ForDisplay(totalVeSDL)],
+    ["", ""],
+    ...resultKeys.map((k) => [k, formatBI18ForDisplay(sumsByKey[k])]),
   ]);
 
   // Write some results to a CSV
-  writeCsv(
+  writeFileSync(
     "sdl-balances.csv",
     formatValuesAsCsv(
-      Object.entries(sdlBalances)
-        .filter(([, bal]) => bal > BigInt(1e20))
+      Object.entries(allSDLBalances)
+        .filter(([, bal]) => bal > 0n)
         .sort((a, b) => (a[1] > b[1] ? -1 : 1))
         .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
     )
   );
 
-  writeCsv(
+  writeFileSync(
     "vesdl-balances.csv",
     formatValuesAsCsv(
-      Object.entries(vesdlBalances)
-        .filter(([, bal]) => bal > BigInt(1e18))
+      Object.entries(allVeSDLBalances)
+        .filter(([, bal]) => bal > 0n)
         .sort((a, b) => (a[1] > b[1] ? -1 : 1))
         .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
     )
   );
 
-  writeCsv("non-eoa-addresses.csv", [...nonEOASet].sort().join("\n"));
+  writeFileSync("non-eoa-addresses.csv", [...nonEOASet].sort().join("\n"));
   return;
 }
 main();

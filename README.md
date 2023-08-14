@@ -7,8 +7,9 @@
 1. Install dependencies with `pnpm install`
 2. Copy `template.env` and add infura API key
 3. Export addresses as `targets.csv` from https://dune.com/queries/2759260, save in project root
-4. Export uniswap v3 positiosn as `univ3_lps.csv` from https://dune.com/queries/2727107, save in project root
-5. Run with `pnpm run exec`
+4. Export uniswap v3 positiosn as `univ3-lps.csv` from https://dune.com/queries/2727107, save in project root
+5. Export badgesForBandits NFT holders from [etherscan csv export](https://etherscan.io/exportData) using address `0xe374b4df4cf95ecc0b7c93b49d465a1549f86cc0`
+6. Run with `pnpm run exec`
 
 ## Checklist
 
