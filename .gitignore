@@ -3,4 +3,7 @@ node_modules/
 coverage/
 .env
 *.csv
+!targets.csv
+!univ3-lps.csv
+!badges-for-bandits-nfts.csv
 .vscode/

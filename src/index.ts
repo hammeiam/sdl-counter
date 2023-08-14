@@ -36,6 +36,7 @@ import {
   readUniv3LpCsv,
   readEtherscanNftCsv,
   getBlockForTimestamp,
+  parseCsv,
 } from "./utils";
 import { writeFileSync } from "fs";
 
@@ -536,7 +537,7 @@ export async function main() {
 
   const targetTimestamp = 1690898195n;
   const targets = readDuneTargetsCsv("./targets.csv");
-  const univ3LPs = readUniv3LpCsv("./univ3_lps.csv");
+  const univ3LPs = readUniv3LpCsv("./univ3-lps.csv");
 
   const promises = [];
   const allExclusionSet = new Set(
@@ -749,7 +750,7 @@ export async function main() {
     "sdl-balances.csv",
     formatValuesAsCsv(
       Object.entries(allSDLBalances)
-        .filter(([, bal]) => bal > BigInt(1e20))
+        .filter(([, bal]) => bal > 0n)
         .sort((a, b) => (a[1] > b[1] ? -1 : 1))
         .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
     )
@@ -759,7 +760,7 @@ export async function main() {
     "vesdl-balances.csv",
     formatValuesAsCsv(
       Object.entries(allVeSDLBalances)
-        .filter(([, bal]) => bal > BigInt(1e18))
+        .filter(([, bal]) => bal > 0n)
         .sort((a, b) => (a[1] > b[1] ? -1 : 1))
         .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
     )
