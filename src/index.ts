@@ -552,6 +552,14 @@ export async function main() {
         !allExclusionSet.has(address as Address)
     )
   ) as Set<Address>;
+  const EOASet = new Set(
+      Object.keys(targets).filter(
+        (address) =>
+          targets?.[address as Address]?.[`${mainnet.id}_isEOA`] &&
+          targets?.[address as Address]?.[`${optimism.id}_isEOA`] &&
+          targets?.[address as Address]?.[`${arbitrum.id}_isEOA`]
+      )
+    ) as Set<Address>;
 
   for (const chain of allChains) {
     const publicClient = createClient(chain);
@@ -657,6 +665,14 @@ export async function main() {
     }),
     {}
   ) as Record<(typeof resultKeys)[number], AddressBIMap>;
+
+  // Remove any addresses that are in the exclusion list from the results grouped by keys
+  allExclusionSet.forEach((addr) => {
+    resultKeys.forEach((key) => {
+      delete resultsByKey[key][addr];
+    });
+  });
+
   const sumsByKey = resultKeys.reduce(
     (acc, key) => ({ ...acc, [key]: sumObjectValues(resultsByKey[key]) }),
     {}
@@ -687,7 +703,7 @@ export async function main() {
       .map(([k, v]) => [
         k,
         formatBI18ForDisplay(v),
-        nonEOASet.has(k as Address) ? "✅" : "❌",
+        nonEOASet.has(k as Address) ? "✅" : EOASet.has(k as Address) ? "❌" : "⚠️" ,
       ])
       .slice(0, 30),
   ]);
@@ -698,9 +714,9 @@ export async function main() {
       "Address",
       "SDL",
       "veSDL",
-      "existsOnMainnet",
-      "existsOnArbitrum",
-      "existsOnOptimism",
+      "bytecodeExistsOnMainnet",
+      "bytecodeExistsOnArbitrum",
+      "bytecodeExistsOnOptimism",
     ],
     ...[...nonEOASet]
       .map(
@@ -713,9 +729,9 @@ export async function main() {
             allSDLBalances[address] || 0n,
             allVeSDLBalances[address] || 0n,
             // If isEOAMainnet is undefined, then we don't know if it exists on mainnet. Use question mark to indicate this.
-            isEOAMainnet === undefined ? "?" : isEOAMainnet ? "✅" : "❌",
-            isEOAArbitrum === undefined ? "?" : isEOAArbitrum ? "✅" : "❌",
-            isEOAOptimism === undefined ? "?" : isEOAOptimism ? "✅" : "❌",
+            isEOAMainnet === undefined ? "?" : isEOAMainnet ? "❌" : "✅",
+            isEOAArbitrum === undefined ? "?" : isEOAArbitrum ? "❌" : "✅",
+            isEOAOptimism === undefined ? "?" : isEOAOptimism ? "❌" : "✅",
           ] as const;
         }
       )
