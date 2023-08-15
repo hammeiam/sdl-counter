@@ -21,6 +21,8 @@ import {
   vestingToBeneficiaryContracts,
   etherscanMevBots,
   saddleCreators,
+  BI_1e18,
+  CHAIN_ASSIGNMENT,
 } from "./constants";
 import { PublicChainClient, AddressBIMap } from "./types";
 import "dotenv/config";
@@ -37,6 +39,9 @@ import {
   readEtherscanNftCsv,
   getBlockForTimestamp,
   parseCsv,
+  mergeBalancesMapsHavingKey,
+  sumObjectValues,
+  filterObject,
 } from "./utils";
 import { writeFileSync } from "fs";
 
@@ -147,7 +152,7 @@ export async function getBadgesForBanditsNFTCount(
 ) {
   if (publicClient.chain.id !== mainnet.id) return {} as AddressBIMap;
 
-  const sdlPerNFT = 7_500n * BigInt(1e18);
+  const sdlPerNFT = 7_500n * BI_1e18;
   const addrToNFTCount = readEtherscanNftCsv("./badges-for-bandits-nfts.csv");
   return Object.fromEntries(
     Object.entries(addrToNFTCount).map(([addr, nftCount]) => [
@@ -165,7 +170,7 @@ export async function getSaddleCreatorsNFTCount(
 ) {
   if (publicClient.chain.id !== mainnet.id) return {} as AddressBIMap;
 
-  const sdlPerNFT = 350_000n * BigInt(1e18);
+  const sdlPerNFT = 350_000n * BI_1e18;
   return Object.fromEntries(
     saddleCreators.map((addr) => [getAddress(addr), sdlPerNFT])
   ) as AddressBIMap;
@@ -485,8 +490,8 @@ export async function getSushiSDLBalances(
 
   // Part 1: get wallets's share of reserves
   const balances = userLpBalances.map((userLpBalance) => {
-    const userPctReserves = (userLpBalance * BigInt(1e18)) / totalLpSupply;
-    const userLpedSdl = (userPctReserves * sdlReserves) / BigInt(1e18);
+    const userPctReserves = (userLpBalance * BI_1e18) / totalLpSupply;
+    const userLpedSdl = (userPctReserves * sdlReserves) / BI_1e18;
     return userLpedSdl;
   });
   const balancesByAddress = zip(addresses, balances) as AddressBIMap;
@@ -494,8 +499,8 @@ export async function getSushiSDLBalances(
   // Part 2: get SLP Gauge Depositors's share of reserves
   const sdlInGauge = (gaugeBalance * sdlReserves) / totalLpSupply;
   const balancesInGauge = userGaugeBalances.map((userGaugeBalance) => {
-    const userPctReserves = (userGaugeBalance * BigInt(1e18)) / gaugeBalance;
-    const userSdlInGauge = (userPctReserves * sdlInGauge) / BigInt(1e18);
+    const userPctReserves = (userGaugeBalance * BI_1e18) / gaugeBalance;
+    const userSdlInGauge = (userPctReserves * sdlInGauge) / BI_1e18;
     return userSdlInGauge;
   });
   const balancesInGaugeByAddress = zip(
@@ -506,9 +511,8 @@ export async function getSushiSDLBalances(
   // Part 3: get SLP Masterchef Depositors's share of reserves
   const sdlInMasterchef = (masterchefBalance * sdlReserves) / totalLpSupply;
   const balancesInMasterchef = userMasterchefInfos.map(([userLpAmount]) => {
-    const userPctReserves = (userLpAmount * BigInt(1e18)) / masterchefBalance;
-    const userSdlInMasterchef =
-      (userPctReserves * sdlInMasterchef) / BigInt(1e18);
+    const userPctReserves = (userLpAmount * BI_1e18) / masterchefBalance;
+    const userSdlInMasterchef = (userPctReserves * sdlInMasterchef) / BI_1e18;
     return userSdlInMasterchef;
   });
   const balancesInMasterchefByAddress = zip(
@@ -650,17 +654,7 @@ export async function main() {
       await Promise.all(promises);
     }
   }
-  const sumObjectValues = (obj: { [key: string]: bigint }) => {
-    return Object.values(obj).reduce((sum, bal) => sum + bal, 0n);
-  };
-  const mergeBalancesMapsHavingKey = (
-    balancesByKey: { [key: string]: AddressBIMap }[],
-    targetKey: string
-  ) => {
-    return mergeBalanceMaps(
-      ...balancesByKey.map((result) => result[targetKey] || {})
-    );
-  };
+
   const promisesResults = await Promise.all(promises);
   const resultKeys = [
     "veSDL",
@@ -680,22 +674,62 @@ export async function main() {
     }),
     {}
   ) as Record<(typeof resultKeys)[number], AddressBIMap>;
-  const sumsByKey = resultKeys.reduce(
+  const sumsByKeyUnfiltered = resultKeys.reduce(
     (acc, key) => ({ ...acc, [key]: sumObjectValues(resultsByKey[key]) }),
     {}
   ) as Record<(typeof resultKeys)[number], bigint>;
-  const totalVeSDL = sumsByKey["veSDL"];
-  const totalSDL = sumObjectValues(sumsByKey) - totalVeSDL;
-  const allSDLBalances = mergeBalanceMaps(
-    ...resultKeys.filter((k) => k !== "veSDL").map((k) => resultsByKey[k])
+  const MIN_SDL_AMOUNT = 100n * BI_1e18;
+  const allSDLBalancesUnfiltered = filterObject(
+    mergeBalanceMaps(
+      ...resultKeys.filter((k) => k !== "veSDL").map((k) => resultsByKey[k])
+    ),
+    (k, v) => v > 0n
   );
-  const allVeSDLBalances = resultsByKey["veSDL"];
+  const allVeSDLBalancesUnfiltered = filterObject(
+    resultsByKey["veSDL"],
+    (k, v) => v > 0n
+  );
+  const [sdlAmountUnfiltered, sdlHoldersUnfiltered] = [
+    sumObjectValues(allSDLBalancesUnfiltered),
+    Object.keys(allSDLBalancesUnfiltered).length,
+  ];
+  const [veSDLAmountUnfiltered, veSDLHoldersUnfiltered] = [
+    sumObjectValues(allVeSDLBalancesUnfiltered),
+    Object.keys(allVeSDLBalancesUnfiltered).length,
+  ];
+  const allSDLBalances = filterObject(
+    allSDLBalancesUnfiltered,
+    (k, v) => v > MIN_SDL_AMOUNT
+  );
+  const allVeSDLBalances = filterObject(
+    allVeSDLBalancesUnfiltered,
+    (k, v) => v > BI_1e18
+  );
+  const totalVeSDL = sumObjectValues(allVeSDLBalances);
+  const totalSDL = sumObjectValues(allSDLBalances);
+
+  console.table([
+    ["", "UNFILTERED TOTALS"],
+    ["SDL Sum", formatBI18ForDisplay(sdlAmountUnfiltered)],
+    ["SDL holders", sdlHoldersUnfiltered],
+    ["veSDL Sum", formatBI18ForDisplay(veSDLAmountUnfiltered)],
+    ["veSDL holders", veSDLHoldersUnfiltered],
+    ["", ""],
+    ...resultKeys.map((k) => [k, formatBI18ForDisplay(sumsByKeyUnfiltered[k])]),
+  ]);
+
+  console.table([
+    ["", "FILTERED TOTALS"],
+    ["SDL Sum", formatBI18ForDisplay(totalSDL)],
+    ["SDL holders", Object.keys(allSDLBalances).length],
+    ["veSDL Sum", formatBI18ForDisplay(totalVeSDL)],
+    ["veSDL holders", Object.keys(allVeSDLBalances).length],
+  ]);
 
   console.log("veSDL Balances");
   console.table([
     ["total", formatBI18ForDisplay(totalVeSDL)],
     ...Object.entries(allVeSDLBalances)
-      .filter(([, bal]) => bal > BigInt(1e18)) // > 1 veSDL
       .sort((a, b) => (a[1] > b[1] ? -1 : 1))
       .map(([k, v]) => [k, formatBI18ForDisplay(v)])
       .slice(0, 25),
@@ -715,14 +749,13 @@ export async function main() {
   console.table([
     ["total", formatBI18ForDisplay(totalSDL), "isContract?"],
     ...Object.entries(allSDLBalances)
-      .filter(([, bal]) => bal > BigInt(1e20)) // > 100 SDL
       .sort((a, b) => (a[1] > b[1] ? -1 : 1))
       .map(([k, v]) => [
         k,
         formatBI18ForDisplay(v),
         nonEOASet.has(k as Address) ? "✅" : "❌",
       ])
-      .slice(0, 30),
+      .slice(0, 25),
   ]);
 
   console.log("Non EOA Addresses");
@@ -759,7 +792,6 @@ export async function main() {
               : "✅",
           ] as const
       )
-      .filter(([, sdl, vesdl, ,]) => sdl > BigInt(1e18) || vesdl > BigInt(1e18))
       .sort((a, b) => (a[1] + 4n * a[2] > b[1] + 4n * b[2] ? -1 : 1))
       .map(
         ([
@@ -778,16 +810,7 @@ export async function main() {
           existsOnOptimism,
         ]
       )
-      .slice(0, 45),
-  ]);
-
-  console.table([
-    ["TYPE", "TOTAL"],
-    ["", ""],
-    ["SDL Sum", formatBI18ForDisplay(totalSDL)],
-    ["veSDL Sum", formatBI18ForDisplay(totalVeSDL)],
-    ["", ""],
-    ...resultKeys.map((k) => [k, formatBI18ForDisplay(sumsByKey[k])]),
+      .slice(0, 25),
   ]);
 
   // Write some results to a CSV
@@ -795,7 +818,6 @@ export async function main() {
     "sdl-balances.csv",
     formatValuesAsCsv(
       Object.entries(allSDLBalances)
-        .filter(([, bal]) => bal > 0n)
         .sort((a, b) => (a[1] > b[1] ? -1 : 1))
         .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
     )
@@ -805,7 +827,6 @@ export async function main() {
     "vesdl-balances.csv",
     formatValuesAsCsv(
       Object.entries(allVeSDLBalances)
-        .filter(([, bal]) => bal > 0n)
         .sort((a, b) => (a[1] > b[1] ? -1 : 1))
         .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
     )
@@ -828,6 +849,98 @@ export async function main() {
     "unknown-eoa-addresses.csv",
     [...unknownEOASet].sort().join("\n")
   );
+
+  const weightedTotal = totalSDL + 4n * totalVeSDL;
+  writeFileSync(
+    "master-list.csv",
+    [
+      [
+        "Address",
+        "pctOfWeightedTotal",
+        `${mainnet.id}_isContract`,
+        `${arbitrum.id}_isContract`,
+        `${optimism.id}_isContract`,
+        "flagged?",
+        "chain",
+        "SDL",
+        "veSDL",
+      ].join(","),
+      ...Object.entries(allSDLBalances)
+        .map(([address, sdl]) => {
+          const vesdl = allVeSDLBalances[address as Address] || 0n;
+          const weightWalletAmt = sdl + 4n * vesdl;
+          const pctOfWeightedTotal =
+            (weightWalletAmt * BI_1e18) / weightedTotal;
+          const isMainnetContract = !targets[address]?.[`${mainnet.id}_isEOA`];
+          const isArbitrumContract =
+            !targets[address]?.[`${arbitrum.id}_isEOA`];
+          const isOptimismContract =
+            !targets[address]?.[`${optimism.id}_isEOA`];
+          const chain =
+            CHAIN_ASSIGNMENT[address as Address] ||
+            (isMainnetContract && mainnet.id) ||
+            (isOptimismContract && optimism.id) ||
+            arbitrum.id;
+          const flagged =
+            !CHAIN_ASSIGNMENT[address as Address] &&
+            [isMainnetContract, isArbitrumContract, isOptimismContract].filter(
+              Boolean
+            ).length > 1;
+          return [
+            address,
+            (Number((pctOfWeightedTotal * 10_000_000n) / BI_1e18) / 100_000)
+              .toFixed(5)
+              .padStart(8, " "),
+            isMainnetContract ? 1 : 0,
+            isArbitrumContract ? 1 : 0,
+            isOptimismContract ? 1 : 0,
+            flagged ? 1 : 0,
+            chain,
+            sdl,
+            vesdl,
+          ] as const;
+        })
+        .sort((a, b) => (Number(a[1]) > Number(b[1]) ? -1 : 1))
+        .map((row) => row.join(",")),
+    ].join("\n")
+  );
   return;
 }
 main();
+
+// (function () {
+//   const csv = parseCsv("./master-list.csv");
+//   const flaggedAddrs = csv.filter((row) => row[5] === "1").map((row) => row[0]);
+//   const allMainnetAdrs = csv.filter((row) => Number(row[6]) === mainnet.id);
+//   const allArbitrumAdrs = csv.filter((row) => Number(row[6]) === arbitrum.id);
+//   const allOptimismAdrs = csv.filter((row) => Number(row[6]) === optimism.id);
+//   const totalPctMainnet = allMainnetAdrs.reduce(
+//     (sum, row) => sum + Number(row[1]),
+//     0
+//   );
+//   const totalPctArbitrum = allArbitrumAdrs.reduce(
+//     (sum, row) => sum + Number(row[1]),
+//     0
+//   );
+//   const totalPctOptimism = allOptimismAdrs.reduce(
+//     (sum, row) => sum + Number(row[1]),
+//     0
+//   );
+
+//   console.table([
+//     ["Total Flagged Addresses", flaggedAddrs.length],
+//     [
+//       "Dist. to Mainnet",
+//       `${totalPctMainnet.toFixed(4)}% (ct. ${allMainnetAdrs.length})`,
+//     ],
+//     [
+//       "Dist. to Arbitrum",
+//       `${totalPctArbitrum.toFixed(4)}% (ct. ${allArbitrumAdrs.length})`,
+//     ],
+//     [
+//       "Dist. to Optimism",
+//       `${totalPctOptimism.toFixed(4)}% (ct. ${allOptimismAdrs.length})`,
+//     ],
+//   ]);
+//   console.table(["Flagged Addrs", ...flaggedAddrs]);
+// })();

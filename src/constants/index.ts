@@ -12,6 +12,7 @@ export { default as etherscanMevBots } from "./mevbots";
 export { default as vestingToBeneficiaryContracts } from "./vestingContracts";
 export { saddleCreators } from "./nftHolders";
 
+export const BI_1e18 = 10n ** 18n;
 export const ADDRESSES: {
   [chainId: number]: {
     [contract: string]: Address;
@@ -67,6 +68,9 @@ export const EXCLUSION_LIST: { [chainId: number]: Address[] } = {
     "0xc7b10D3B08CEB05d8ff58a3c781225D9a72078Ae", // veSDL Rewards
     "0xa4B86BcbB18639D8e708d6163a0c734aFcDB770c", // NoMad Recover
     "0x46866D274E6D9015c5FDc098CE270803e11e3eF4", // SwapMigrator
+    "0x00000000009726632680FB29d3F7A9734E3010E2", // rainbow.me router
+    "0xD5B927956057075377263aaB7f8AfC12F85100dB", // Paraswap
+    "0x0b139682D5C9Df3e735063f46Fb98c689540Cf3A", // redacted
     ...Object.values(ADDRESSES[mainnet.id]),
     ...(Object.keys(vestingToBeneficiaryContracts) as Address[]),
   ],
@@ -74,9 +78,17 @@ export const EXCLUSION_LIST: { [chainId: number]: Address[] } = {
     "0x6d9b26C25993358dCa0ABE9BF6A26Ddb18583200", // Saddle ops multisig
     "0x8e6e84DDab9d13A17806d34B097102605454D147", // Saddle multisig
     "0x9E233DD6a90678BaaCd89c05ce5C48f43fCc106E", // ClipperCoves
+    "0x00000000009726632680FB29d3F7A9734E3010E2", // rainbow.me router
+    "0xD5B927956057075377263aaB7f8AfC12F85100dB", // Paraswap
+    "0x0b139682D5C9Df3e735063f46Fb98c689540Cf3A", // redacted
     ...Object.values(ADDRESSES[arbitrum.id]),
   ],
-  [optimism.id]: [...Object.values(ADDRESSES[optimism.id])],
+  [optimism.id]: [
+    ...Object.values(ADDRESSES[optimism.id]),
+    "0x00000000009726632680FB29d3F7A9734E3010E2", // rainbow.me router
+    "0xD5B927956057075377263aaB7f8AfC12F85100dB", // Paraswap
+    "0x0b139682D5C9Df3e735063f46Fb98c689540Cf3A", // redacted
+  ],
 };
 
 export const REMAPPING: { [address: Address]: Address } = {
@@ -86,4 +98,15 @@ export const REMAPPING: { [address: Address]: Address } = {
     "0x5b12d9846F8612E439730d18E1C12634753B1bF1", // Arb: Sperax's custom contract for holding gauge tokens -> Sperax multisig
   "0xaa4D101eFD2F57dd9E3767F2b850417E7744367e":
     "0x5b12d9846F8612E439730d18E1C12634753B1bF1", // Arb: Sperax's unknown contract -> Sperax multisig
+  "0x634EAbE7C03Bcf701a5FF3C0510E9AcB2d5F5196":
+    "0x5318f07A3a20A2f8bb0DDf14F1DD58C517a76508", // Eth: L2DAO -> Arbitrum L2DAO
+};
+
+export const CHAIN_ASSIGNMENT: { [address: Address]: number } = {
+  "0x5318f07A3a20A2f8bb0DDf14F1DD58C517a76508": arbitrum.id, // Arbitrum L2DAO
+  "0x53AB8F38EE493d88553Ea6c2766d574E404e249B": mainnet.id,
+  "0x461aa63A98e6f8BdAa19CA3f2258670E794FFF34": mainnet.id,
+  "0x67E3ea119E141406c37e2CA783b749Fe1437673f": mainnet.id,
+  "0x3dFc49e5112005179Da613BdE5973229082dAc35": mainnet.id,
+  "0x99b36fDbC582D113aF36A21EBa06BFEAb7b9bE12": mainnet.id,
 };
