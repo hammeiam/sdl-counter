@@ -93,7 +93,7 @@ export const EXCLUSION_LIST: { [chainId: number]: Address[] } = {
 
 export const REMAPPING: { [address: Address]: Address } = {
   "0x851aBEf4d67E8bb4eE2f90E5dE5e880f6235d028":
-    "0x9e2b6378ee8ad2A4A95Fe481d63CAba8FB0EBBF9", // Eth: Alchemix SDL controller -> Alchemix dev multisig
+    "0x7e108711771DfdB10743F016D46d75A9379cA043", // Eth: Alchemix SDL controller -> Arbitrum Alchemix dev multisig
   "0x886f2d09909CaA489c745927E200AFd5aF198444":
     "0x5b12d9846F8612E439730d18E1C12634753B1bF1", // Arb: Sperax's custom contract for holding gauge tokens -> Sperax multisig
   "0xaa4D101eFD2F57dd9E3767F2b850417E7744367e":
@@ -109,4 +109,5 @@ export const CHAIN_ASSIGNMENT: { [address: Address]: number } = {
   "0x67E3ea119E141406c37e2CA783b749Fe1437673f": mainnet.id,
   "0x3dFc49e5112005179Da613BdE5973229082dAc35": mainnet.id,
   "0x99b36fDbC582D113aF36A21EBa06BFEAb7b9bE12": mainnet.id,
+  "0x7e108711771DfdB10743F016D46d75A9379cA043": arbitrum.id, // Arbitrum Alchemix multisig
 };
