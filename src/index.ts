@@ -888,14 +888,14 @@ export async function main() {
             ).length > 1;
           return [
             address,
-            (Number((pctOfWeightedTotal * 10_000_000n) / BI_1e18) / 100_000)
-              .toFixed(5)
-              .padStart(8, " "),
+            (Number((pctOfWeightedTotal * 100_000_000n) / BI_1e18) / 1_000_000)
+              .toFixed(6)
+              .padStart(9, " "),
             isMainnetContract ? 1 : 0,
             isArbitrumContract ? 1 : 0,
             isOptimismContract ? 1 : 0,
             flagged ? 1 : 0,
-            chain,
+            String(chain).padStart(5, " "),
             sdl,
             vesdl,
           ] as const;
