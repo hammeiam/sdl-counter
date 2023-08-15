@@ -11,6 +11,28 @@ import { REMAPPING, vestingToBeneficiaryContracts } from "./constants";
 import { AddressBIMap, PublicChainClient } from "./types";
 import { readFileSync } from "fs";
 
+export function filterObject<V>(
+  obj: Record<string, V>,
+  predicate: (key: string, value: V) => boolean
+) {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([key, value]) => predicate(key, value))
+  );
+}
+
+export function sumObjectValues(obj: { [key: string]: bigint }) {
+  return Object.values(obj).reduce((sum, bal) => sum + bal, 0n);
+}
+
+export function mergeBalancesMapsHavingKey(
+  balancesByKey: { [key: string]: AddressBIMap }[],
+  targetKey: string
+) {
+  return mergeBalanceMaps(
+    ...balancesByKey.map((result) => result[targetKey] || {})
+  );
+}
+
 export function parseCsv(csvPath: string) {
   const csv = readFileSync(csvPath, "utf8");
   const lines = csv.split("\n");
