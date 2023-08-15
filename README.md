@@ -41,3 +41,31 @@
 - [x] fetch values accross all chains
 - [x] aggregate results and display
 - [x] omit addresses (eg msig, treasury)
+
+## Infographics
+
+Note that contract addresses are prefixed with `C-`.
+
+### Total Number of Addreses Per Chain
+
+![Total Number of Addreses Per Chain](infographics/Total%20Number%20of%20Addresses%20Per%20Chain.png)
+
+### Weighted Percetange Distribution Across Chains
+
+![Total Number of Addreses Per Chain](infographics/Weighted%20Percentage%20Distribution%20Across%20Chains.png)
+
+### Top 50 Addresses by Weighted Percentage Across All Chains
+
+![Top 50 Addresses by Weighted Percentage Across All Chains](infographics/Top%2050%20Addresses%20by%20Weighted%20Percentage%20Across%20All%20Chains.png)
+
+### Top 50 Addresses by Weighted Percentage for Chain 1
+
+![Top 50 Addresses by Weighted Percentage for Chain 1](infographics/Top%2050%20Addresses%20by%20Weighted%20Percentage%20for%20Chain%201.png)
+
+### Top 50 Addresses by Weighted Percentage for Chain 10
+
+![Top 50 Addresses by Weighted Percentage for Chain 10](infographics/Top%2050%20Addresses%20by%20Weighted%20Percentage%20for%20Chain%2010.png)
+
+### Top 50 Addresses by Weighted Percentage for Chain 42161
+
+![Top 50 Addresses by Weighted Percentage for Chain 42161](infographics/Top%2050%20Addresses%20by%20Weighted%20Percentage%20for%20Chain%2042161.png)
