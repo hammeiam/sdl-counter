@@ -73,6 +73,7 @@ export const EXCLUSION_LIST: { [chainId: number]: Address[] } = {
     "0x00000000009726632680FB29d3F7A9734E3010E2", // rainbow.me router
     "0xD5B927956057075377263aaB7f8AfC12F85100dB", // Paraswap
     "0x0b139682D5C9Df3e735063f46Fb98c689540Cf3A", // redacted
+    "0xfFc026655b71147784f1CCd9D410c5Bc11d41cEF", // Pickle Finance Strategy
     ...Object.values(ADDRESSES[mainnet.id]),
     ...(Object.keys(vestingToBeneficiaryContracts) as Address[]),
   ],
