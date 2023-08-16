@@ -1,54 +1,57 @@
+import "dotenv/config";
+
+import {
+  ADDRESSES,
+  BI_1e18,
+  CHAIN_ASSIGNMENT,
+  EXCLUSION_LIST,
+  delosSigners,
+  etherscanMevBots,
+  saddleCreators,
+  vestingToBeneficiaryContracts,
+} from "./constants";
 import {
   Address,
+  formatUnits,
+  getAddress,
   getContract,
   parseEther,
-  getAddress,
-  formatUnits,
 } from "viem";
+import { AddressBIMap, PublicChainClient } from "./types";
 import { Pool, Position } from "@uniswap/v3-sdk";
-import { Token } from "@uniswap/sdk-core";
-import { mainnet, arbitrum, optimism } from "viem/chains";
+import { arbitrum, mainnet, optimism } from "viem/chains";
+import {
+  batchArray,
+  createClient,
+  enumerate,
+  filterObject,
+  formatBI18ForDisplay,
+  formatValuesAsCsv,
+  getBlockForTimestamp,
+  mergeBalanceMaps,
+  mergeBalancesMapsHavingKey,
+  parseCsv,
+  readDuneTargetsCsv,
+  readEtherscanNftCsv,
+  readUniv3LpCsv,
+  sumObjectValues,
+  zip,
+} from "./utils";
 import {
   childGaugeFactoryAbi,
   erc20Abi,
   gaugeControllerAbi,
   liquidityGaugeV5Abi,
+  masterchefAbi,
   retroVestingAbi,
+  slpAbi,
   uniV3PositionsAbi,
+  uniV3SDLPoolAbi,
   veSdlAbi,
   vestingAbi,
-  uniV3SDLPoolAbi,
-  slpAbi,
-  masterchefAbi,
 } from "./abis";
-import {
-  ADDRESSES,
-  EXCLUSION_LIST,
-  vestingToBeneficiaryContracts,
-  etherscanMevBots,
-  saddleCreators,
-  BI_1e18,
-  CHAIN_ASSIGNMENT,
-} from "./constants";
-import { PublicChainClient, AddressBIMap } from "./types";
-import "dotenv/config";
-import {
-  zip,
-  enumerate,
-  mergeBalanceMaps,
-  formatBI18ForDisplay,
-  createClient,
-  readDuneTargetsCsv,
-  batchArray,
-  formatValuesAsCsv,
-  readUniv3LpCsv,
-  readEtherscanNftCsv,
-  getBlockForTimestamp,
-  parseCsv,
-  mergeBalancesMapsHavingKey,
-  sumObjectValues,
-  filterObject,
-} from "./utils";
+
+import { Token } from "@uniswap/sdk-core";
 import { writeFileSync } from "fs";
 
 const allChains = [mainnet, arbitrum, optimism] as const;
@@ -179,6 +182,21 @@ export async function getSaddleCreatorsNFTCount(
   const sdlPerNFT = 350_000n * BI_1e18;
   return Object.fromEntries(
     saddleCreators.map((addr) => [getAddress(addr), sdlPerNFT])
+  ) as AddressBIMap;
+}
+
+/**
+ * Assigns SDL to each DELOS signer
+ * Safe: https://app.safe.global/home?safe=eth:0x03D319a9921474B9cdE1fff1DBaFba778f9eFEb0
+ */
+export async function getDelosSignersBalances(
+  publicClient: PublicChainClient
+) {
+  if (publicClient.chain.id !== mainnet.id) return {} as AddressBIMap;
+
+  const sdlPerSigner = 180_000n * BI_1e18;
+  return Object.fromEntries(
+    delosSigners.map((addr) => [getAddress(addr), sdlPerSigner])
   ) as AddressBIMap;
 }
 
@@ -637,6 +655,19 @@ export async function main() {
           badgesForBanditsNFT: result,
         }))
     );
+    promises.push(
+      getDelosSignersBalances(publicClient)
+        .then((result) => {
+          return Object.fromEntries(
+            Object.entries(result).filter(
+              ([address]) => !chainExclusionSet.has(address as Address)
+            )
+          ) as AddressBIMap;
+        })
+        .then((result) => ({
+          delosSigners: result,
+        }))
+    );
 
     for (const batch of chainWallets) {
       promises.push(
@@ -680,6 +711,7 @@ export async function main() {
     "uniV3",
     "saddleCreatorsNFT",
     "badgesForBanditsNFT",
+    "delosSigners",
   ] as const;
   const resultsByKey = resultKeys.reduce(
     (acc, key) => ({

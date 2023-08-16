@@ -1,16 +1,18 @@
-import { mainnet, arbitrum, optimism, evmos } from "viem/chains";
+import { arbitrum, evmos, mainnet, optimism } from "viem/chains";
+
 import { Address } from "viem";
 import { stringToHex } from "viem";
+import { default as vestingToBeneficiaryContracts } from "./vestingContracts";
 
 export const POOL_REGISTRY_NAME = stringToHex("PoolRegistry", { size: 32 });
 export const CHILD_GAUGE_FACTORY_NAME = stringToHex("ChildGaugeFactory", {
   size: 32,
 });
-import { default as vestingToBeneficiaryContracts } from "./vestingContracts";
 
 export { default as etherscanMevBots } from "./mevbots";
 export { default as vestingToBeneficiaryContracts } from "./vestingContracts";
 export { saddleCreators } from "./nftHolders";
+export { delosSigners } from "./delosSigners";
 
 export const BI_1e18 = 10n ** 18n;
 export const ADDRESSES: {
