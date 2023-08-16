@@ -389,8 +389,13 @@ export async function getUniV3PositionBalance(
             recipient: tokenOwner,
             amount0Max: 2n ** 128n - 1n,
             amount1Max: 2n ** 128n - 1n,
-          },
-        ]);
+            }
+          ],
+          {
+            blockNumber,
+            value: 0n,
+          }
+        );
       })
     );
 
@@ -594,7 +599,7 @@ export async function main() {
         }))
     );
     promises.push(
-      getUniV3PositionBalance(publicClient, univ3LPs[chain.id])
+      getUniV3PositionBalance(publicClient, univ3LPs[chain.id], targetBlock)
         .then((result) => {
           return Object.fromEntries(
             Object.entries(result).filter(
