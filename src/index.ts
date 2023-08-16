@@ -1,4 +1,10 @@
-import { Address, getContract, parseEther, getAddress } from "viem";
+import {
+  Address,
+  getContract,
+  parseEther,
+  getAddress,
+  formatUnits,
+} from "viem";
 import { Pool, Position } from "@uniswap/v3-sdk";
 import { Token } from "@uniswap/sdk-core";
 import { mainnet, arbitrum, optimism } from "viem/chains";
@@ -540,6 +546,11 @@ export async function main() {
   ].map(getAddress);
 
   const targetTimestamp = 1690898195n;
+  const targetBlocks = {
+    [mainnet.id]: 17820592n,
+    [arbitrum.id]: 117105902n,
+    [optimism.id]: 107649708n,
+  };
   const targets = readDuneTargetsCsv("./targets.csv");
   const univ3LPs = readUniv3LpCsv("./univ3-lps.csv");
 
@@ -550,10 +561,8 @@ export async function main() {
 
   for (const chain of allChains) {
     const publicClient = createClient(chain);
-    const [targetBlock, gaugeAddresses] = await Promise.all([
-      getBlockForTimestamp(publicClient, targetTimestamp),
-      getAllGaugeAddresses(publicClient),
-    ]);
+    const targetBlock = targetBlocks[chain.id];
+    const gaugeAddresses = await getAllGaugeAddresses(publicClient);
 
     console.log(`Target block for ${chain.name}: ${targetBlock}`);
 
@@ -886,11 +895,15 @@ export async function main() {
             [isMainnetContract, isArbitrumContract, isOptimismContract].filter(
               Boolean
             ).length > 1;
+          const formattedPct = formatUnits(pctOfWeightedTotal, 16)
+            .split(".")
+            .map((s, i) =>
+              i === 0 ? s.padStart(2, "0") : s.padEnd(6, "0").slice(0, 8)
+            )
+            .join(".");
           return [
             address,
-            (Number((pctOfWeightedTotal * 100_000_000n) / BI_1e18) / 1_000_000)
-              .toFixed(6)
-              .padStart(9, " "),
+            formattedPct,
             isMainnetContract ? 1 : 0,
             isArbitrumContract ? 1 : 0,
             isOptimismContract ? 1 : 0,
