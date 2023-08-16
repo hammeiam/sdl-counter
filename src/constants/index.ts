@@ -95,9 +95,9 @@ export const REMAPPING: { [address: Address]: Address } = {
   "0x851aBEf4d67E8bb4eE2f90E5dE5e880f6235d028":
     "0x7e108711771DfdB10743F016D46d75A9379cA043", // Eth: Alchemix SDL controller -> Arbitrum Alchemix dev multisig
   "0x886f2d09909CaA489c745927E200AFd5aF198444":
-    "0x5b12d9846F8612E439730d18E1C12634753B1bF1", // Arb: Sperax's custom contract for holding gauge tokens -> Sperax multisig
+    "0xb56e5620A79cfe59aF7c0FcaE95aADbEA8ac32A1", // Arb: Sperax's custom contract for holding gauge tokens -> Sperax multisig
   "0xaa4D101eFD2F57dd9E3767F2b850417E7744367e":
-    "0x5b12d9846F8612E439730d18E1C12634753B1bF1", // Arb: Sperax's unknown contract -> Sperax multisig
+    "0xb56e5620A79cfe59aF7c0FcaE95aADbEA8ac32A1", // Arb: Sperax's unknown contract -> Sperax multisig
   "0x634EAbE7C03Bcf701a5FF3C0510E9AcB2d5F5196":
     "0x5318f07A3a20A2f8bb0DDf14F1DD58C517a76508", // Eth: L2DAO -> Arbitrum L2DAO
 };
