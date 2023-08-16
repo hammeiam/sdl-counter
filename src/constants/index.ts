@@ -74,6 +74,10 @@ export const EXCLUSION_LIST: { [chainId: number]: Address[] } = {
     "0xD5B927956057075377263aaB7f8AfC12F85100dB", // Paraswap
     "0x0b139682D5C9Df3e735063f46Fb98c689540Cf3A", // redacted
     "0xfFc026655b71147784f1CCd9D410c5Bc11d41cEF", // Pickle Finance Strategy
+    "0xCCB26b5CC4e1Ce29521DA281a0107A6672bfe099", // Frax Swap pair
+    "0x6E399F1d376237aE705DD015894fC3FB559521b4", // Unknown contract without payable function
+    "0x2d5D79753bB8e02ca1ce8EcE0aa55288F8c8d840", // Generalized swap migrator
+    "0x0535f1f43Ee274123291bbAB284948CAED46C65D", // nestedfi.eth reserve
     ...Object.values(ADDRESSES[mainnet.id]),
     ...(Object.keys(vestingToBeneficiaryContracts) as Address[]),
   ],
