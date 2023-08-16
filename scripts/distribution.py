@@ -139,11 +139,12 @@ def write_distribution_as_csv(owned_eth, owned_arb, master_list_csv):
         for row in distribution_list:
             writer.writerow(row)
 
-# Example usage
-eth_price = 1827.14
-arb_price = 1.12
-owned_eth = 70.46049
-owned_arb = 1_545_243
+# Price of ETH and ARB at the time of writing
+# 2023-08-16 04:30 PM EST
+eth_price = 1820.38
+arb_price = 1.09
+owned_eth = 244.4005
+owned_arb = 1253644.7
 
 csv_filename = (mod_path / '../master-list.csv').resolve()
 calculate_rebalance(eth_price, arb_price, owned_eth, owned_arb, csv_filename)
