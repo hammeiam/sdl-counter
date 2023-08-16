@@ -389,8 +389,13 @@ export async function getUniV3PositionBalance(
             recipient: tokenOwner,
             amount0Max: 2n ** 128n - 1n,
             amount1Max: 2n ** 128n - 1n,
-          },
-        ]);
+            }
+          ],
+          {
+            blockNumber,
+            value: 0n,
+          }
+        );
       })
     );
 
@@ -581,7 +586,7 @@ export async function main() {
       1000
     );
     promises.push(
-      getVestingClaimableBalances(publicClient)
+      getVestingClaimableBalances(publicClient, targetBlock)
         .then((result) => {
           return Object.fromEntries(
             Object.entries(result).filter(
@@ -594,7 +599,7 @@ export async function main() {
         }))
     );
     promises.push(
-      getUniV3PositionBalance(publicClient, univ3LPs[chain.id])
+      getUniV3PositionBalance(publicClient, univ3LPs[chain.id], targetBlock)
         .then((result) => {
           return Object.fromEntries(
             Object.entries(result).filter(
@@ -735,24 +740,37 @@ export async function main() {
     ["veSDL holders", Object.keys(allVeSDLBalances).length],
   ]);
 
+  // Merge all addresses in SDL balances and veSDL balances into a single set
+  // Then filter out all addresses that are known to be EOA
+  // Then append to nonEOABoolDict
+  const nonEOABoolDict = {} as Record<Address, boolean>;
+  // Create a set of all addresses that have a balance in either SDL or veSDL
+  const allAddresses = new Set([
+    ...Object.keys(allSDLBalances),
+    ...Object.keys(allVeSDLBalances),
+    ...Object.keys(targets),
+  ]);
+  // For each address, check if it is known to be an EOA on any chain
+  for (const address of allAddresses) {
+    const isContract = allChains.some(
+      (chain) =>
+        targets?.[address as Address]?.[String(chain.id) + "_isEOA"] === false
+    );
+    nonEOABoolDict[address as Address] = isContract;
+  }
+
   console.log("veSDL Balances");
   console.table([
-    ["total", formatBI18ForDisplay(totalVeSDL)],
+    ["total", formatBI18ForDisplay(totalVeSDL), "isContract?"],
     ...Object.entries(allVeSDLBalances)
       .sort((a, b) => (a[1] > b[1] ? -1 : 1))
-      .map(([k, v]) => [k, formatBI18ForDisplay(v)])
+      .map(([k, v]) => [
+        k,
+        formatBI18ForDisplay(v),
+        nonEOABoolDict[k as Address] === true ? "✅" : nonEOABoolDict[k as Address] === false ? "❌" : "⚠️",
+      ])
       .slice(0, 25),
   ]);
-
-  const nonEOASet = new Set(
-    Object.keys(allSDLBalances).filter(
-      (address) =>
-        (!targets?.[address as Address]?.[`${mainnet.id}_isEOA`] ||
-          !targets?.[address as Address]?.[`${optimism.id}_isEOA`] ||
-          !targets?.[address as Address]?.[`${arbitrum.id}_isEOA`]) &&
-        !allExclusionSet.has(address as Address)
-    )
-  ) as Set<Address>;
 
   console.log("SDL Balances");
   console.table([
@@ -762,7 +780,7 @@ export async function main() {
       .map(([k, v]) => [
         k,
         formatBI18ForDisplay(v),
-        nonEOASet.has(k as Address) ? "✅" : "❌",
+        nonEOABoolDict[k as Address] === true ? "✅" : nonEOABoolDict[k as Address] === false ? "❌" : "⚠️",
       ])
       .slice(0, 25),
   ]);
@@ -777,7 +795,7 @@ export async function main() {
       "existsOnArbitrum",
       "existsOnOptimism",
     ],
-    ...[...nonEOASet]
+    ...[...allAddresses]
       .map(
         (address) =>
           [
@@ -785,17 +803,17 @@ export async function main() {
             allSDLBalances[address] || 0n,
             allVeSDLBalances[address] || 0n,
             targets[address]?.[`${mainnet.id}_isEOA`] === undefined
-              ? "❓"
+              ? "⚠️"
               : targets[address]?.[`${mainnet.id}_isEOA`]
               ? "❌"
               : "✅",
             targets[address]?.[`${arbitrum.id}_isEOA`] === undefined
-              ? "❓"
+              ? "⚠️"
               : targets[address]?.[`${arbitrum.id}_isEOA`]
               ? "❌"
               : "✅",
             targets[address]?.[`${optimism.id}_isEOA`] === undefined
-              ? "❓"
+              ? "⚠️"
               : targets[address]?.[`${optimism.id}_isEOA`]
               ? "❌"
               : "✅",
@@ -841,6 +859,11 @@ export async function main() {
     )
   );
 
+  const nonEOASet = new Set(
+    Object.entries(nonEOABoolDict)
+      .filter(([, isContract]: [string, boolean]) => isContract)
+      .map(([address]: [string, boolean]) => address)
+  );
   writeFileSync("non-eoa-addresses.csv", [...nonEOASet].sort().join("\n"));
 
   const unknownEOASet = new Set(
