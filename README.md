@@ -1,6 +1,8 @@
-# SDL Balances
+# SDL Balances and Treasury Distribution
 
-> Calculates veSDL and SDL balances (including unclaimed SDL) for all users on all chains
+> Calculates veSDL/SDL balances (including unclaimed SDL) and the treasury distribution for all users on all chains
+
+This is an implementation of [SIP-54: Protocol operations and treasury management](https://vote.saddle.community/#/proposal/0x271aef6b1d04cf08878b33d304add4827da146dc7b1ca12d802a3922e29ad34b).
 
 The following parameters are used in the calculations:
 - Target block for Ethereum: [17820592](https://etherscan.io/block/17820592)
@@ -14,15 +16,15 @@ The final distribution results are in [distributions.csv](distributions.csv).
 ## Getting started
 
 1. Install dependencies with `pnpm install`
-2. Copy `template.env` and add infura API key
-3. Export addresses as `targets.csv` from https://dune.com/queries/2759260, save in project root
-4. Export uniswap v3 positiosn as `univ3-lps.csv` from https://dune.com/queries/2727107, save in project root
+2. Copy [template.env](template.env) and add infura API key
+3. Export addresses as [targets.csv](targets.csv) from https://dune.com/queries/2759260, save in project root
+4. Export uniswap v3 positiosn as [univ3-lps.csv](univ3-lps.csv) from https://dune.com/queries/2727107, save in project root
 5. Export badgesForBandits NFT holders from [etherscan csv export](https://etherscan.io/exportData) using address `0xe374b4df4cf95ecc0b7c93b49d465a1549f86cc0`
 6. Run with `pnpm run exec`
 
 ## Understanding the results
 
-Results are output to `master-list.csv`, which contains information about every recipient address. This includes its calculated SDL and veSDL balances, as well as the % of total distribution it is entitled to.
+Results are output to [master-list.csv](master-list.csv), which contains information about every recipient address. This includes its calculated SDL and veSDL balances, as well as the % of total distribution it is entitled to.
 
 The % is derived from the formula `(walletSDL + 4 x walletVeSDL) / (totalSDL + 4 x totalVeSDL)`, as per the [proposal](https://snapshot.org/#/saddlefinance.eth/proposal/0x271aef6b1d04cf08878b33d304add4827da146dc7b1ca12d802a3922e29ad34b)
 
