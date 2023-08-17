@@ -144,7 +144,7 @@ def write_distribution_as_csv(owned_eth, owned_arb, master_list_csv):
 eth_price = 1820.38
 arb_price = 1.09
 owned_eth = 244.4005
-owned_arb = 1253644.7
+owned_arb = 1253644.6630783998
 
 csv_filename = (mod_path / '../master-list.csv').resolve()
 calculate_rebalance(eth_price, arb_price, owned_eth, owned_arb, csv_filename)
