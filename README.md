@@ -16,10 +16,10 @@ The final distribution results are in [distributions.csv](distributions.csv).
 ## Getting started
 
 1. Install dependencies with `pnpm install`
-2. Copy [template.env](template.env) and add infura API key
+2. Copy [template.env](template.env) and add Infura API key
 3. Export addresses as [targets.csv](targets.csv) from https://dune.com/queries/2759260, save in project root
-4. Export uniswap v3 positiosn as [univ3-lps.csv](univ3-lps.csv) from https://dune.com/queries/2727107, save in project root
-5. Export badgesForBandits NFT holders from [etherscan csv export](https://etherscan.io/exportData) using address `0xe374b4df4cf95ecc0b7c93b49d465a1549f86cc0`
+4. Export Uniswap V3 positions as [univ3-lps.csv](univ3-lps.csv) from https://dune.com/queries/2727107, save in project root
+5. Export badgesForBandits NFT holders from [Etherscan CSV export](https://etherscan.io/exportData) using address `0xe374b4df4cf95ecc0b7c93b49d465a1549f86cc0`
 6. Run with `pnpm run exec`
 
 ## Understanding the results
