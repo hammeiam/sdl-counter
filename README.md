@@ -91,7 +91,7 @@ Note that contract addresses are prefixed with `C-`.
 
 ## Output
 
-**pnpm run exec**
+**> pnpm run exec**
 ```
 > 
 
@@ -222,7 +222,7 @@ Non EOA Addresses
 └─────────┴──────────────────────────────────────────────┴──────────────┴──────────────┴───────────────────┴────────────────────┴────────────────────┘
 ```
 
-**python scripts/distribution.py**
+**> python scripts/distribution.py**
 ```
 Parameters:
   ETH price: 1,827.14
